@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NUTRI 300 — 3-Day Diet Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f4ee;
+    --card:#ffffff;
+    --ink:#1d2b27;
+    --muted:#5d6b66;
+    --line:#e3ded2;
+    --primary:#1f6f5c;       /* deep teal-green */
+    --primary-d:#16513f;
+    --accent:#c75b39;        /* terracotta, used sparingly */
+    --good:#2e8b57;
+    --warn:#d9a300;
+    --over:#c0392b;
+    --chip:#eef3f0;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(20,40,30,.05),0 6px 20px rgba(20,40,30,.06);
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  header.app{
+    background:linear-gradient(180deg,var(--primary),var(--primary-d));
+    color:#fff;padding:22px 20px 16px;
+  }
+  header.app .wrap{max-width:1060px;margin:0 auto;}
+  header.app h1{margin:0;font-size:20px;letter-spacing:.2px;font-weight:700;}
+  header.app p{margin:4px 0 0;font-size:13px;opacity:.85;}
+  .stepnav{max-width:1060px;margin:0 auto;display:flex;gap:6px;padding:0 20px;
+    margin-top:14px;flex-wrap:wrap;}
+  .stepnav button{
+    flex:1;min-width:150px;border:none;cursor:pointer;font:inherit;font-size:13px;font-weight:600;
+    background:rgba(255,255,255,.12);color:#fff;padding:10px 12px;border-radius:10px 10px 0 0;
+    border-bottom:3px solid transparent;transition:.15s;text-align:left;
+  }
+  .stepnav button .n{opacity:.7;font-weight:700;margin-right:6px;}
+  .stepnav button[aria-selected="true"]{background:var(--bg);color:var(--ink);border-bottom-color:var(--accent);}
+  .stepnav button:disabled{opacity:.45;cursor:not-allowed;}
+  main{max-width:1060px;margin:0 auto;padding:22px 20px 60px;}
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px;box-shadow:var(--shadow);margin-bottom:18px;}
+  h2{font-size:17px;margin:0 0 4px;}
+  h3{font-size:14px;margin:18px 0 8px;color:var(--primary-d);text-transform:uppercase;letter-spacing:.6px;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 14px;}
+  label{display:block;font-size:13px;font-weight:600;margin:12px 0 5px;}
+  input,select,textarea{
+    width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:9px;font:inherit;
+    background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--primary);outline-offset:1px;border-color:var(--primary);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 18px;}
+  .row-inline{display:flex;gap:8px;}
+  .row-inline > *{flex:1;}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px;font-weight:400;}
+  .btn{
+    background:var(--primary);color:#fff;border:none;padding:11px 18px;border-radius:9px;
+    font:inherit;font-weight:600;cursor:pointer;transition:.15s;
+  }
+  .btn:hover{background:var(--primary-d);}
+  .btn.secondary{background:#fff;color:var(--primary-d);border:1px solid var(--primary);}
+  .btn.secondary:hover{background:var(--chip);}
+  .btn.accent{background:var(--accent);}
+  .btn.accent:hover{filter:brightness(.93);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn.small{padding:7px 12px;font-size:13px;}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+
+  /* activity option cards */
+  .act-list{display:grid;gap:10px;margin-top:6px;}
+  .act-opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;gap:12px;align-items:flex-start;}
+  .act-opt:hover{border-color:var(--primary);}
+  .act-opt input{width:auto;margin-top:3px;flex:none;}
+  .act-opt > span{flex:1;}
+  .act-opt.sel{border-color:var(--primary);background:var(--chip);}
+  .act-opt .t{font-weight:600;font-size:14px;display:block;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line);}
+  .act-opt .d{font-size:12.5px;color:var(--muted);display:block;}
+
+  /* requirements readout */
+  .req-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:8px;}
+  .req-tile{background:var(--chip);border-radius:10px;padding:12px 14px;}
+  .req-tile .k{font-size:12px;color:var(--muted);font-weight:600;}
+  .req-tile .v{font-size:19px;font-weight:700;color:var(--primary-d);}
+  .req-tile .u{font-size:12px;color:var(--muted);font-weight:600;}
+
+  /* food log */
+  .daytabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .daytab{padding:8px 16px;border:1px solid var(--line);background:#fff;border-radius:20px;cursor:pointer;font-weight:600;font-size:13px;}
+  .daytab.sel{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .daytab .cnt{opacity:.7;font-weight:500;}
+  .search-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;}
+  .search-bar .src{flex:none;width:180px;}
+  .search-bar .q{flex:1;min-width:200px;}
+  .results{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;display:none;}
+  .results.show{display:block;}
+  .result{padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between;gap:10px;}
+  .result:last-child{border-bottom:none;}
+  .result:hover{background:var(--chip);}
+  .result .nm{font-weight:600;font-size:14px;}
+  .result .meta{font-size:12px;color:var(--muted);}
+  .result .src-tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;align-self:center;white-space:nowrap;}
+  .src-usda{background:#e2efe9;color:#1f6f5c;}
+  .src-off{background:#f1e6dd;color:#a4502f;}
+  .loader{padding:16px;text-align:center;color:var(--muted);font-size:13px;}
+
+  .entry{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:#fff;}
+  .entry .nm{font-weight:600;font-size:13.5px;}
+  .entry .meta{font-size:12px;color:var(--muted);}
+  .entry .kcal{font-weight:700;color:var(--primary-d);white-space:nowrap;}
+  .entry .rm{background:none;border:none;color:var(--over);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;}
+  .empty{color:var(--muted);font-size:13px;font-style:italic;padding:8px 0;}
+
+  /* serving modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(20,30,25,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;max-width:440px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .modal h3{margin-top:0;}
+
+  /* report tables */
+  table.rep{width:100%;border-collapse:collapse;font-size:13px;}
+  table.rep th,table.rep td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);}
+  table.rep th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+  table.rep td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  table.rep tr.sub td:first-child{padding-left:26px;color:var(--muted);}
+  .bar{height:9px;border-radius:5px;background:#eee;overflow:hidden;min-width:70px;}
+  .bar > span{display:block;height:100%;border-radius:5px;}
+  .pct{font-weight:700;font-variant-numeric:tabular-nums;}
+  .pl-good{color:var(--good);} .pl-warn{color:var(--warn);} .pl-over{color:var(--over);} .pl-none{color:var(--muted);font-weight:500;}
+
+  .banner{border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px;}
+  .banner.warn{background:#fff5e0;border:1px solid #f0d999;color:#7a5b00;}
+  .banner.err{background:#fdecea;border:1px solid #f3b9b3;color:#8a2018;}
+  .banner.ok{background:#e7f4ec;border:1px solid #aedcc0;color:#1c5a3a;}
+
+  details.settings{margin-top:10px;font-size:13px;}
+  details.settings summary{cursor:pointer;color:var(--muted);font-weight:600;}
+
+  @media (max-width:560px){
+    .search-bar .src{width:100%;}
+    header.app h1{font-size:18px;}
+  }
+  @media print{
+    header.app,.stepnav,.actions,.no-print{display:none !important;}
+    .card{box-shadow:none;border:none;}
+  }
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="wrap">
+    <h1>NUTRI 300 · 3-Day Diet Analysis Project</h1>
+    <p>American River College — Nutrition Department</p>
+    <p id="acctBar" style="display:none;font-size:12.5px;margin-top:8px">
+      Signed in as <b id="acctNameOut"></b> · <a href="#" id="switchAcct" style="color:#fff;text-decoration:underline;cursor:pointer">Switch student</a>
+    </p>
+  </div>
+  <nav class="stepnav" role="tablist">
+    <button role="tab" aria-selected="true" data-step="0"><span class="n">1</span>Your Profile</button>
+    <button role="tab" aria-selected="false" data-step="1" id="navLog"><span class="n">2</span>Food &amp; Drink Log</button>
+    <button role="tab" aria-selected="false" data-step="2" id="navReport"><span class="n">3</span>Nutrient Report</button>
+    <button role="tab" aria-selected="false" data-step="3" id="navExport"><span class="n">4</span>Food List Export</button>
+  </nav>
+</header>
+
+<main>
+  <!-- STEP 1: PROFILE -->
+  <section class="panel active" id="panel-0">
+    <div class="card">
+      <h2>Step 1 — Enter your information</h2>
+      <p class="sub">Your calorie and nutrient targets are calculated from these details using the Mifflin-St Jeor equation. Be accurate — your instructor reviews this section to catch entry mistakes.</p>
+
+      <div class="grid">
+        <div>
+          <label for="name">Name <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input id="name" type="text" placeholder="Last, First" />
+        </div>
+        <div>
+          <label for="birthdate">Birthdate</label>
+          <input id="birthdate" type="date" />
+          <div class="hint" id="ageOut"></div>
+        </div>
+      </div>
+
+      <label for="sex">Sex</label>
+      <select id="sex">
+        <option value="">Select…</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+      </select>
+
+      <div id="femaleStatusWrap" style="display:none">
+        <label for="femaleStatus">Are you currently pregnant or nursing?</label>
+        <select id="femaleStatus">
+          <option value="none">No / Not applicable</option>
+          <option value="pregnant">Pregnant</option>
+          <option value="nursing">Nursing (lactating)</option>
+        </select>
+        <div id="pregTriWrap" style="display:none">
+          <label for="pregTri">Pregnancy stage</label>
+          <select id="pregTri">
+            <option value="1">1st trimester</option>
+            <option value="2">2nd trimester</option>
+            <option value="3">3rd trimester</option>
+          </select>
+        </div>
+        <div id="lactStageWrap" style="display:none">
+          <label for="lactStage">Nursing stage</label>
+          <select id="lactStage">
+            <option value="1">First 6 months</option>
+            <option value="2">7–12 months</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="dietType">Do you follow a vegetarian or vegan diet?</label>
+      <select id="dietType">
+        <option value="none">No — I eat meat, poultry, or fish</option>
+        <option value="vegetarian">Vegetarian (no meat, poultry, or fish)</option>
+        <option value="vegan">Vegan (no animal products at all)</option>
+      </select>
+      <div class="hint">Used to personalize your nutrient targets.</div>
+
+      <h3>Height &amp; weight</h3>
+      <div class="grid">
+        <div>
+          <label>Height</label>
+          <div class="row-inline" id="htImperial">
+            <div><input id="htFt" type="number" min="0" placeholder="ft" /></div>
+            <div><input id="htIn" type="number" min="0" max="11" placeholder="in" /></div>
+          </div>
+          <div id="htMetric" style="display:none"><input id="htCm" type="number" min="0" placeholder="cm" /></div>
+        </div>
+        <div>
+          <label>Weight</label>
+          <input id="wt" type="number" min="0" step="0.1" placeholder="weight" />
+        </div>
+        <div>
+          <label for="units">Units</label>
+          <select id="units">
+            <option value="imperial">US (lb / ft-in)</option>
+            <option value="metric">Metric (kg / cm)</option>
+          </select>
+        </div>
+      </div>
+
+      <h3>Activity level</h3>
+      <p class="sub">Pick the option that best matches a typical week. Times shown are per session.</p>
+      <div class="act-list" id="actList"></div>
+
+      <div class="actions">
+        <button class="btn" id="calcBtn">Calculate my targets</button>
+        <button class="btn secondary no-print" id="resetBtn">Clear everything</button>
+      </div>
+    </div>
+
+    <div class="card" id="reqCard" style="display:none">
+      <h2>Your estimated daily targets</h2>
+      <p class="sub" id="reqSummary"></p>
+      <div class="req-grid" id="reqGrid"></div>
+      <div class="actions">
+        <button class="btn accent" id="toLogBtn">Continue to food log →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: FOOD LOG -->
+  <section class="panel" id="panel-1">
+    <div class="card">
+      <h2>Step 2 — Log 3 days of food &amp; drink</h2>
+      <p class="sub">Search a food, choose how much you had, and add it to the right day. Log everything you eat and drink — including water, coffee, and condiments. You need at least 2 full days (3 is required for the assignment) before generating your report.</p>
+
+      <div class="daytabs" id="dayTabs"></div>
+
+      <div class="search-bar">
+        <div class="q">
+          <label for="query" style="margin-top:0">Search a food or drink</label>
+          <input id="query" type="text" placeholder="e.g. banana, chicken breast, milk…" />
+        </div>
+        <button class="btn" id="searchBtn">Search</button>
+      </div>
+      <div class="hint" id="srcHint">Type part of a food name and press Search. You can log any food on the class food list.</div>
+
+      <div class="results" id="results"></div>
+
+      <details class="settings no-print">
+        <summary>Food list status &amp; instructor options</summary>
+        <div id="dbStatus" class="hint" style="margin-top:8px"></div>
+        <label for="dbUpload" style="font-size:12px;margin-top:8px">Load a different food list (.xlsx)</label>
+        <input id="dbUpload" type="file" accept=".xlsx,.xls" style="font-size:12px" />
+        <div class="hint">Use this only if the food list didn't load automatically, or to test an updated list before deploying it.</div>
+      </details>
+
+      <h3 id="dayHeading">Day 1 entries</h3>
+      <div id="entryList"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn secondary" data-goto="0">← Back to profile</button>
+      <button class="btn accent" id="toReportBtn">Generate nutrient report →</button>
+    </div>
+  </section>
+
+  <!-- STEP 3: REPORT -->
+  <section class="panel" id="panel-2">
+    <div id="reportArea"></div>
+    <div class="actions no-print">
+      <button class="btn secondary" data-goto="1">← Back to log</button>
+      <button class="btn" id="pdfBtn">Download report (PDF)</button>
+      <button class="btn secondary" id="printRepBtn">Print report</button>
+    </div>
+  </section>
+
+  <!-- STEP 4: EXPORT -->
+  <section class="panel" id="panel-3">
+    <div class="card">
+      <h2>Step 4 — Food list spreadsheet</h2>
+      <p class="sub">A line-by-line list of every food and drink you logged across all 3 days, with full nutrient content for each. Save this as a spreadsheet (.csv) or print it.</p>
+      <div class="actions" style="margin-top:0">
+        <button class="btn" id="csvBtn">Download spreadsheet (.csv)</button>
+        <button class="btn secondary" id="printCsvBtn">Print food list</button>
+      </div>
+      <div id="csvPreview" style="overflow:auto;margin-top:18px;"></div>
+    </div>
+    <div class="actions no-print">
+      <button class="btn secondary" data-goto="2">← Back to report</button>
+    </div>
+  </section>
+</main>
+
+<!-- ACCOUNT GATE -->
+<div class="modal-bg show" id="acctGate">
+  <div class="modal">
+    <h3>Welcome — start or resume your work</h3>
+    <p class="sub">Enter your name and a short PIN. This keeps your entries separate from anyone else who uses this computer, and lets you come back to your saved progress later. This is a simple lock for a shared classroom computer, not a secure login — please don't reuse a real password.</p>
+    <label for="acctName">Your name</label>
+    <input id="acctName" type="text" placeholder="Last, First" autocomplete="off" />
+    <label for="acctPin">4+ digit PIN</label>
+    <input id="acctPin" type="password" inputmode="numeric" maxlength="12" placeholder="e.g. 4821" autocomplete="off" />
+    <div class="hint" id="acctMsg" style="min-height:16px"></div>
+    <div class="actions">
+      <button class="btn" id="acctGo">Continue</button>
+    </div>
+    <p class="hint" style="margin-top:14px">First time on this computer? Entering a new name creates your account with that PIN. Returning? Enter the exact same name + PIN to load your saved data.</p>
+  </div>
+</div>
+
+<!-- SERVING MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Add food</h3>
+    <p class="sub" id="modalDesc"></p>
+    <label for="amtQty">Amount</label>
+    <div class="row-inline">
+      <div style="flex:.5"><input id="amtQty" type="number" min="0" step="0.25" value="1" /></div>
+      <div style="flex:1.5"><select id="amtPortion"></select></div>
+    </div>
+    <div class="hint" id="gramsOut"></div>
+    <div class="actions">
+      <button class="btn" id="confirmAdd">Add to day</button>
+      <button class="btn secondary" id="cancelAdd">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   NUTRI 300 — 3-Day Diet Analysis
+   Single-file app. Food data comes from a local Excel file (foods.xlsx).
+   ============================================================ */
+
+/* ---- FOOD LIST --------------------------------------------------------
+   The app reads foods.xlsx (placed next to index.html). Each row is one
+   food with nutrient values PER 100 g, plus a common household portion.
+   No API, no key, no internet required once the page has loaded.
+   To change the foods: edit foods.xlsx and re-upload it to your site.
+*/
+const FOODS_FILE = "foods.xlsx";
+let FOODS = [];        // [{name, category, portionLabel, portionGrams, per100g:{...}}]
+let foodsLoaded = false;
+
+const LS = {
+  profile:"nutri300_profile_v2",   // legacy single-user keys, read once for migration only
+  log:"nutri300_log_v2"
+};
+const ACC_LS = "nutri300_accounts_v1";   // { [slug]: {name, pinHash, profile, targets, log, updatedAt} }
+const ACTIVE_LS = "nutri300_active_v1";  // slug of the currently signed-in student, this browser only
+let accounts = {};
+let activeSlug = null;
+
+/* ---------- ACTIVITY LEVELS (IOM EER physical-activity categories) ----------
+   The four categories below map directly to the PA coefficients in the IOM
+   Estimated Energy Requirement equation. Descriptions give concrete daily
+   times so students can self-classify. */
+const ACTIVITY = [
+  {v:"sed", t:"Sedentary",
+   d:"Only the activities of independent daily living. No intentional exercise — desk/seated work and short walks around home or campus."},
+  {v:"low", t:"Low active",
+   d:"Daily living plus about 30–40 minutes of moderate activity most days — e.g. one 30-minute brisk walk or easy workout per session."},
+  {v:"active", t:"Active",
+   d:"Daily living plus about 60 minutes of moderate exercise most days — e.g. a 60-minute jog, gym session, or bike ride each time."},
+  {v:"very", t:"Very active",
+   d:"Daily living plus roughly 2+ hours of activity most days — e.g. vigorous training, sports practice, or a physically demanding job."}
+];
+
+/* IOM PA coefficients — depend on sex and age group (adult 19+ vs 9–18). */
+const PA = {
+  adult:{ male:  {sed:1.00, low:1.11, active:1.25, very:1.48},
+          female:{sed:1.00, low:1.12, active:1.27, very:1.45} },
+  child:{ male:  {sed:1.00, low:1.13, active:1.26, very:1.42},
+          female:{sed:1.00, low:1.16, active:1.31, very:1.56} }
+};
+
+/* (Food data now comes from the Excel list, keyed by the readable column
+   labels below — no USDA nutrient-number mapping needed.) */
+
+/* CSV column order — matches the Cronometer "Servings" export exactly */
+const CSV_FIELDS = [
+  ["Energy (kcal)","kcal"],["Alcohol (g)","alcohol"],["Caffeine (mg)","caffeine"],["Water (g)","water"],
+  ["B1 (Thiamine) (mg)","b1"],["B2 (Riboflavin) (mg)","b2"],["B3 (Niacin) (mg)","b3"],
+  ["B5 (Pantothenic Acid) (mg)","b5"],["B6 (Pyridoxine) (mg)","b6"],["B12 (Cobalamin) (µg)","b12"],
+  ["Folate (µg)","folate"],["Vitamin A (µg)","vitA"],["Vitamin C (mg)","vitC"],["Vitamin D (IU)","vitD"],
+  ["Vitamin E (mg)","vitE"],["Vitamin K (µg)","vitK"],["Calcium (mg)","calcium"],["Copper (mg)","copper"],
+  ["Iron (mg)","iron"],["Magnesium (mg)","magnesium"],["Manganese (mg)","manganese"],
+  ["Phosphorus (mg)","phosphorus"],["Potassium (mg)","potassium"],["Selenium (µg)","selenium"],
+  ["Sodium (mg)","sodium"],["Zinc (mg)","zinc"],["Carbs (g)","carbs"],["Fiber (g)","fiber"],
+  ["Starch (g)","starch"],["Sugars (g)","sugars"],["Net Carbs (g)","netCarbs"],["Fat (g)","fat"],
+  ["Cholesterol (mg)","cholesterol"],["Monounsaturated (g)","mono"],["Polyunsaturated (g)","poly"],
+  ["Saturated (g)","saturated"],["Trans-Fats (g)","trans"],["Omega-3 (g)","omega3"],["Omega-6 (g)","omega6"],
+  ["Cystine (g)","cystine"],["Histidine (g)","histidine"],["Isoleucine (g)","isoleucine"],
+  ["Leucine (g)","leucine"],["Lysine (g)","lysine"],["Methionine (g)","methionine"],
+  ["Phenylalanine (g)","phenylalanine"],["Protein (g)","protein"],["Threonine (g)","threonine"],
+  ["Tryptophan (g)","tryptophan"],["Tyrosine (g)","tyrosine"],["Valine (g)","valine"]
+];
+
+/* Food List Export (CSV) uses the same fields, minus the individual amino
+   acids and Starch/Net Carbs -- those stay available internally (foods.xlsx
+   still has the data) but aren't shown in this particular printout. */
+const EXPORT_FIELDS = CSV_FIELDS.filter(([label]) => ![
+  "Cystine (g)","Histidine (g)","Isoleucine (g)","Leucine (g)","Lysine (g)",
+  "Methionine (g)","Phenylalanine (g)","Threonine (g)","Tryptophan (g)",
+  "Tyrosine (g)","Valine (g)","Starch (g)","Net Carbs (g)"
+].includes(label));
+
+/* ---------- STATE ---------- */
+let profile = null;       // {name,birthdate,age,sex,status,htCm,wtKg,activity,units,...}
+let targets = null;       // computed DRI targets
+let log = [[],[],[]];     // 3 days, each an array of entry objects
+let currentDay = 0;
+let pendingFood = null;   // food awaiting serving selection
+
+/* ===================== UTIL ===================== */
+const $ = id => document.getElementById(id);
+function num(v){ const n = parseFloat(v); return isNaN(n)?0:n; }
+function round(v,d=1){ const m=Math.pow(10,d); return Math.round(v*m)/m; }
+function ageFrom(bd){
+  if(!bd) return null;
+  const b=new Date(bd), t=new Date();
+  let a=t.getFullYear()-b.getFullYear();
+  const m=t.getMonth()-b.getMonth();
+  if(m<0||(m===0&&t.getDate()<b.getDate())) a--;
+  return a;
+}
+function save(){
+  if(!activeSlug) return;
+  try{
+    accounts[activeSlug]=accounts[activeSlug]||{};
+    accounts[activeSlug].profile=profile;
+    accounts[activeSlug].targets=targets;
+    accounts[activeSlug].log=log;
+    accounts[activeSlug].updatedAt=Date.now();
+    saveAccounts();
+  }catch(e){}
+}
+function load(){
+  if(!activeSlug || !accounts[activeSlug]) return;
+  const a=accounts[activeSlug];
+  profile=a.profile||null;
+  targets=a.targets||null;
+  log=(Array.isArray(a.log)&&a.log.length===3) ? a.log : [[],[],[]];
+}
+
+/* ===================== ACCOUNTS (same-device, name+PIN) =====================
+   No server involved — everything still lives in this browser's localStorage.
+   The PIN just keeps one student's entries separate from another's on a
+   shared classroom computer; it is not a secure authentication system. */
+function slugify(name){
+  return (name||"").toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,40) || "student";
+}
+function simpleHash(str){
+  let h=0; str=String(str);
+  for(let i=0;i<str.length;i++){ h=(h*31 + str.charCodeAt(i))>>>0; }
+  return h.toString(36);
+}
+function loadAccounts(){
+  try{ accounts=JSON.parse(localStorage.getItem(ACC_LS)||"{}"); }catch(e){ accounts={}; }
+}
+function saveAccounts(){
+  try{ localStorage.setItem(ACC_LS, JSON.stringify(accounts)); }catch(e){}
+}
+function migrateLegacyIfNeeded(){
+  // One-time: if this browser has pre-account data, fold it into an account
+  // so nothing already saved by a student gets lost.
+  if(Object.keys(accounts).length) return;
+  let p=null, l=null;
+  try{ p=JSON.parse(localStorage.getItem(LS.profile)||"null"); }catch(e){}
+  try{ l=JSON.parse(localStorage.getItem(LS.log)||"null"); }catch(e){}
+  if(!p && !l) return;
+  const nm=(p&&p.profile&&p.profile.name) ? p.profile.name : "My saved data";
+  const slug=slugify(nm);
+  accounts[slug]={
+    name:nm, pinHash:null,
+    profile:p?p.profile:null, targets:p?p.targets:null,
+    log:(Array.isArray(l)&&l.length===3)?l:[[],[],[]],
+    updatedAt:Date.now()
+  };
+  saveAccounts();
+}
+function showGate(msg){
+  $("acctMsg").textContent=msg||"";
+  $("acctMsg").style.color = msg ? "var(--over)" : "var(--muted)";
+  $("acctGate").classList.add("show");
+  $("acctBar").style.display="none";
+}
+function hideGate(){ $("acctGate").classList.remove("show"); }
+function enterAccount(slug,name){
+  activeSlug=slug;
+  localStorage.setItem(ACTIVE_LS, slug);
+  $("acctNameOut").textContent=name;
+  $("acctBar").style.display="block";
+  hideGate();
+  load();
+  restoreProfileForm();
+  renderDayTabs(); renderEntries();
+  if(targets) showRequirements();
+  lockSteps();
+}
+
+/* ===================== DRI TARGETS ===================== */
+function ageBand(age,sex){
+  if(age<19) return "14-18";
+  if(age<31) return "19-30";
+  if(age<51) return "31-50";
+  if(age<71) return "51-70";
+  return "71+";
+}
+
+const DRI = {
+  male:{
+    "14-18":{vitA:900,vitC:75,vitD:15,vitE:15,vitK:75,b1:1.2,b2:1.3,b3:16,b5:5,b6:1.3,b12:2.4,folate:400,calcium:1300,iron:11,magnesium:410,phosphorus:1250,potassium:3000,sodium:1500,zinc:11,copper:0.89,manganese:2.2,selenium:55,fiber:38,omega3:1.6,omega6:16,proteinPerKg:0.85},
+    "19-30":{vitA:900,vitC:90,vitD:15,vitE:15,vitK:120,b1:1.2,b2:1.3,b3:16,b5:5,b6:1.3,b12:2.4,folate:400,calcium:1000,iron:8,magnesium:400,phosphorus:700,potassium:3400,sodium:1500,zinc:11,copper:0.9,manganese:2.3,selenium:55,fiber:38,omega3:1.6,omega6:17,proteinPerKg:0.8},
+    "31-50":{vitA:900,vitC:90,vitD:15,vitE:15,vitK:120,b1:1.2,b2:1.3,b3:16,b5:5,b6:1.3,b12:2.4,folate:400,calcium:1000,iron:8,magnesium:420,phosphorus:700,potassium:3400,sodium:1500,zinc:11,copper:0.9,manganese:2.3,selenium:55,fiber:38,omega3:1.6,omega6:17,proteinPerKg:0.8},
+    "51-70":{vitA:900,vitC:90,vitD:15,vitE:15,vitK:120,b1:1.2,b2:1.3,b3:16,b5:5,b6:1.7,b12:2.4,folate:400,calcium:1000,iron:8,magnesium:420,phosphorus:700,potassium:3400,sodium:1500,zinc:11,copper:0.9,manganese:2.3,selenium:55,fiber:30,omega3:1.6,omega6:14,proteinPerKg:0.8},
+    "71+":{vitA:900,vitC:90,vitD:20,vitE:15,vitK:120,b1:1.2,b2:1.3,b3:16,b5:5,b6:1.7,b12:2.4,folate:400,calcium:1200,iron:8,magnesium:420,phosphorus:700,potassium:3400,sodium:1500,zinc:11,copper:0.9,manganese:2.3,selenium:55,fiber:30,omega3:1.6,omega6:14,proteinPerKg:0.8}
+  },
+  female:{
+    "14-18":{vitA:700,vitC:65,vitD:15,vitE:15,vitK:75,b1:1.0,b2:1.0,b3:14,b5:5,b6:1.2,b12:2.4,folate:400,calcium:1300,iron:15,magnesium:360,phosphorus:1250,potassium:2300,sodium:1500,zinc:9,copper:0.89,manganese:1.6,selenium:55,fiber:26,omega3:1.1,omega6:11,proteinPerKg:0.85},
+    "19-30":{vitA:700,vitC:75,vitD:15,vitE:15,vitK:90,b1:1.1,b2:1.1,b3:14,b5:5,b6:1.3,b12:2.4,folate:400,calcium:1000,iron:18,magnesium:310,phosphorus:700,potassium:2600,sodium:1500,zinc:8,copper:0.9,manganese:1.8,selenium:55,fiber:25,omega3:1.1,omega6:12,proteinPerKg:0.8},
+    "31-50":{vitA:700,vitC:75,vitD:15,vitE:15,vitK:90,b1:1.1,b2:1.1,b3:14,b5:5,b6:1.3,b12:2.4,folate:400,calcium:1000,iron:18,magnesium:320,phosphorus:700,potassium:2600,sodium:1500,zinc:8,copper:0.9,manganese:1.8,selenium:55,fiber:25,omega3:1.1,omega6:12,proteinPerKg:0.8},
+    "51-70":{vitA:700,vitC:75,vitD:15,vitE:15,vitK:90,b1:1.1,b2:1.1,b3:14,b5:5,b6:1.5,b12:2.4,folate:400,calcium:1200,iron:8,magnesium:320,phosphorus:700,potassium:2600,sodium:1500,zinc:8,copper:0.9,manganese:1.8,selenium:55,fiber:21,omega3:1.1,omega6:11,proteinPerKg:0.8},
+    "71+":{vitA:700,vitC:75,vitD:20,vitE:15,vitK:90,b1:1.1,b2:1.1,b3:14,b5:5,b6:1.5,b12:2.4,folate:400,calcium:1200,iron:8,magnesium:320,phosphorus:700,potassium:2600,sodium:1500,zinc:8,copper:0.9,manganese:1.8,selenium:55,fiber:21,omega3:1.1,omega6:11,proteinPerKg:0.8}
+  }
+};
+
+function eer(p){
+  // IOM Estimated Energy Requirement (DRI 2002/2005). Height in meters.
+  const m = p.htCm/100, kg = p.wtKg, age = p.age, sex = p.sex;
+  const child = age < 19;
+  const pa = (child ? PA.child : PA.adult)[sex][p.activity];
+  let kcal;
+  if(child){
+    kcal = sex==="male"
+      ? 88.5 - 61.9*age + pa*(26.7*kg + 903*m) + 25
+      : 135.3 - 30.8*age + pa*(10.0*kg + 934*m) + 25;
+  }else{
+    kcal = sex==="male"
+      ? 662 - 9.53*age + pa*(15.91*kg + 539.6*m)
+      : 354 - 6.91*age + pa*(9.36*kg + 726*m);
+  }
+  return {kcal, pa};
+}
+
+function computeTargets(p){
+  const band = ageBand(p.age,p.sex);
+  let t = Object.assign({}, DRI[p.sex][band]);
+
+  // Energy: IOM Estimated Energy Requirement + pregnancy/lactation additions
+  const e = eer(p);
+  let kcal = e.kcal;
+  let energyNote = "";
+  if(p.sex==="female" && p.status==="pregnant"){
+    const add = p.pregTri==="3" ? 452 : (p.pregTri==="2" ? 340 : 0);
+    kcal += add;
+    energyNote = add ? `includes +${add} kcal for pregnancy (${p.pregTri==="3"?"3rd":"2nd"} trimester)` : "1st trimester: no added kcal";
+  }
+  if(p.sex==="female" && p.status==="nursing"){
+    const add = p.lactStage==="2" ? 400 : 330;
+    kcal += add;
+    energyNote = `includes +${add} kcal for lactation`;
+  }
+  t.kcal = Math.round(kcal);
+  t.eerBase = Math.round(e.kcal);
+  t.pa = e.pa;
+  t.energyNote = energyNote;
+
+  // Protein (g/kg), Carbs, Water — base, then preg/lact overrides
+  t.protein = round(t.proteinPerKg * p.wtKg, 0);
+  t.carbs = 130;
+  t.water = p.sex==="male" ? 3700 : 2700;
+
+  if(p.sex==="female" && p.status==="pregnant"){
+    Object.assign(t,{vitA:770,vitC:85,vitD:15,vitE:15,vitK:90,b1:1.4,b2:1.4,b3:18,b5:6,b6:1.9,b12:2.6,folate:600,iron:27,phosphorus:700,potassium:2900,zinc:11,copper:1.0,manganese:2.0,selenium:60,fiber:28,omega3:1.4,omega6:13,water:3000});
+    t.calcium = p.age<19 ? 1300 : 1000;
+    t.magnesium = p.age<31 ? 350 : 360;
+    t.protein = round(1.1 * p.wtKg, 0);
+    t.carbs = 175;
+  }
+  if(p.sex==="female" && p.status==="nursing"){
+    Object.assign(t,{vitA:1300,vitC:120,vitD:15,vitE:19,vitK:90,b1:1.4,b2:1.6,b3:17,b5:7,b6:2.0,b12:2.8,folate:500,iron:9,phosphorus:700,potassium:2800,zinc:12,copper:1.3,manganese:2.6,selenium:70,fiber:29,omega3:1.3,omega6:13,water:3800,magnesium:310});
+    t.calcium = p.age<19 ? 1300 : 1000;
+    t.protein = round(1.3 * p.wtKg, 0);
+    t.carbs = 210;
+  }
+
+  // Energy-derived limits (Dietary Guidelines)
+  t.addedSugars = round((t.kcal*0.10)/4, 0);   // < 10% of kcal
+  t.saturated   = round((t.kcal*0.10)/9, 0);   // < 10% of kcal
+  t.fatLow      = round((t.kcal*0.20)/9, 0);    // AMDR 20%
+  t.fatHigh     = round((t.kcal*0.35)/9, 0);    // AMDR 35%
+  t.sodiumLimit = 2300;                          // CDRR
+
+  // Vegetarian/vegan adjustments. The DRI tables don't carry separate
+  // columns for this, but two adjustments are well supported:
+  //  - Iron: IOM recommends ~1.8x the standard RDA, since non-heme iron
+  //    from plants is far less bioavailable than heme iron from meat.
+  //  - Zinc: commonly recommended ~1.5x higher for vegetarians whose
+  //    protein comes mainly from grains/legumes, since phytates inhibit
+  //    zinc absorption (Academy of Nutrition and Dietetics position paper).
+  // Vitamin B12 has no numeric DRI change — the concern is a reliable
+  // fortified-food or supplement source, so that's flagged as a note
+  // rather than a target adjustment (see t.vegNote below).
+  t.dietType = p.dietType || "none";
+  if(t.dietType==="vegetarian" || t.dietType==="vegan"){
+    t.iron = round(t.iron*1.8, 1);
+    t.zinc = round(t.zinc*1.5, 1);
+    t.vegNote = t.dietType==="vegan"
+      ? "As a vegan, vitamin B12 comes only from fortified foods or a supplement — check your log for a reliable source."
+      : "As a vegetarian, make sure vitamin B12 is coming from dairy/eggs, fortified foods, or a supplement — check your log for a reliable source.";
+  } else {
+    t.vegNote = null;
+  }
+  return t;
+}
+
+/* ===================== PROFILE UI ===================== */
+function renderActivity(){
+  const wrap=$("actList");
+  wrap.innerHTML = ACTIVITY.map((a,i)=>`
+    <label class="act-opt" data-v="${a.v}">
+      <input type="radio" name="activity" value="${a.v}">
+      <span><span class="t">${a.t}</span><span class="d">${a.d}</span></span>
+    </label>`).join("");
+  wrap.querySelectorAll(".act-opt").forEach(opt=>{
+    opt.addEventListener("click",()=>{
+      wrap.querySelectorAll(".act-opt").forEach(o=>o.classList.remove("sel"));
+      opt.classList.add("sel");
+      opt.querySelector("input").checked=true;
+    });
+  });
+}
+
+function updateUnits(){
+  const metric = $("units").value==="metric";
+  $("htImperial").style.display = metric?"none":"flex";
+  $("htMetric").style.display = metric?"block":"none";
+  $("wt").placeholder = metric?"kg":"lb";
+}
+
+function readProfile(){
+  const sex=$("sex").value;
+  if(!sex){ alert("Please select sex."); return null; }
+  const bd=$("birthdate").value;
+  const age=ageFrom(bd);
+  if(age===null||age<2||age>110){ alert("Please enter a valid birthdate."); return null; }
+
+  const units=$("units").value;
+  let htCm, wtKg;
+  if(units==="metric"){
+    htCm=num($("htCm").value); wtKg=num($("wt").value);
+  }else{
+    const ft=num($("htFt").value), inch=num($("htIn").value);
+    htCm=(ft*12+inch)*2.54; wtKg=num($("wt").value)*0.453592;
+  }
+  if(htCm<60||htCm>250){ alert("Please check your height."); return null; }
+  if(wtKg<20||wtKg>400){ alert("Please check your weight."); return null; }
+
+  const act=document.querySelector('input[name="activity"]:checked');
+  if(!act){ alert("Please choose an activity level."); return null; }
+
+  const status = sex==="female" ? $("femaleStatus").value : "none";
+  return {
+    name:$("name").value.trim(), birthdate:bd, age, sex, status,
+    pregTri:$("pregTri").value, lactStage:$("lactStage").value,
+    units, htCm:round(htCm,1), wtKg:round(wtKg,1),
+    htInputFt:$("htFt").value, htInputIn:$("htIn").value, htInputCm:$("htCm").value, wtInput:$("wt").value,
+    activity:act.value,
+    activityLabel: ACTIVITY.find(a=>a.v===act.value).t,
+    dietType:$("dietType").value
+  };
+}
+
+function heightDisplay(p){
+  if(p.units==="metric") return `${round(p.htCm,0)} cm`;
+  const totalIn=p.htCm/2.54;
+  return `${Math.floor(totalIn/12)} ft ${Math.round(totalIn%12)} in`;
+}
+function weightDisplay(p){
+  return p.units==="metric" ? `${round(p.wtKg,1)} kg` : `${round(p.wtKg/0.453592,1)} lb`;
+}
+
+function showRequirements(){
+  const tiles=[
+    ["Calories", targets.kcal, "kcal/day"],
+    ["Protein", targets.protein, "g"],
+    ["Carbohydrate", targets.carbs, "g"],
+    ["Fiber", targets.fiber, "g"],
+    ["Total fat (AMDR)", `${targets.fatLow}–${targets.fatHigh}`, "g"],
+    ["Added sugars limit", `<${targets.addedSugars}`, "g"],
+    ["Saturated fat limit", `<${targets.saturated}`, "g"],
+    ["Water (total)", round(targets.water/1000,1), "L/day"]
+  ];
+  $("reqGrid").innerHTML = tiles.map(t=>`
+    <div class="req-tile"><div class="k">${t[0]}</div>
+      <div class="v">${t[1]} <span class="u">${t[2]}</span></div></div>`).join("");
+  let s=`Based on the IOM Estimated Energy Requirement (EER) for your sex, age, height, weight, and a "${profile.activityLabel}" activity level (PA coefficient ${targets.pa}).`;
+  if(targets.energyNote) s+=` Energy ${targets.energyNote}.`;
+  s+=` Vitamin & mineral targets are set for ${profile.sex}, age ${profile.age}`;
+  if(profile.status!=="none") s+=`, ${profile.status}`;
+  s+=`. See the full comparison after you log your food.`;
+  $("reqSummary").textContent=s;
+  $("reqCard").style.display="block";
+  const oldBanner=$("vegNoteBanner"); if(oldBanner) oldBanner.remove();
+  if(targets.vegNote){
+    $("reqCard").insertAdjacentHTML("beforeend", `<div class="banner warn" id="vegNoteBanner" style="margin-top:12px">${escapeHtml(targets.vegNote)}</div>`);
+  }
+}
+
+/* ===================== NUTRIENT EXTRACTION ===================== */
+/* Canonical set of every nutrient key used in the app: the CSV export
+   fields plus addedSugars (reported but absent from the Cronometer CSV). */
+const ALL_KEYS = CSV_FIELDS.map(f=>f[1]).concat(["addedSugars"]);
+function blankNutrients(){
+  const o={};
+  ALL_KEYS.forEach(k=>o[k]=null);
+  return o;
+}
+
+/* map Excel column labels -> internal nutrient keys (labels match the CSV export) */
+const LABEL2KEY = {};
+CSV_FIELDS.forEach(([label,key])=>{ LABEL2KEY[label]=key; });
+
+/* ===================== FOOD LIST (Excel) ===================== */
+function rowToFood(row){
+  const name = (row["Food Name"]||"").toString().trim();
+  if(!name) return null;
+  const per100g = blankNutrients();
+  CSV_FIELDS.forEach(([label,key])=>{
+    const val = row[label];
+    per100g[key] = (val===null||val===undefined||val==="") ? null : Number(val);
+    if(isNaN(per100g[key])) per100g[key]=null;
+  });
+  if(per100g.netCarbs==null && per100g.carbs!=null)
+    per100g.netCarbs = round(per100g.carbs - (per100g.fiber||0), 2);
+  const addSug = row["Added Sugars (g)"];
+  if(addSug!=null && addSug!=="" && !isNaN(Number(addSug))) per100g.addedSugars = Number(addSug);
+  return {
+    name,
+    category: (row["Category"]||"Food").toString().trim(),
+    portionLabel: (row["Common Portion"]||"serving").toString().trim(),
+    portionGrams: num(row["Portion Weight (g)"]) || 100,
+    per100g
+  };
+}
+
+function parseWorkbook(buf){
+  const wb = XLSX.read(buf, {type:"array"});
+  const sheetName = wb.SheetNames.includes("Foods") ? "Foods"
+                  : wb.SheetNames.find(n=>n.toLowerCase()!=="read me") || wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {defval:null});
+  const foods = rows.map(rowToFood).filter(Boolean);
+  if(!foods.length) throw new Error("no food rows found");
+  FOODS = foods.sort((a,b)=>a.name.localeCompare(b.name));
+  foodsLoaded = true;
+  setDbStatus(`Loaded ${FOODS.length} foods from the class food list.`, true);
+  const sh=$("srcHint"); if(sh) sh.textContent = `Class food list ready — ${FOODS.length} foods available. Type a name and press Search.`;
+}
+
+function setDbStatus(msg, ok){
+  const el=$("dbStatus");
+  if(el){ el.textContent=msg; el.style.color = ok ? "var(--good)" : "var(--over)"; }
+}
+
+async function loadFoods(){
+  const sh=$("srcHint"); if(sh) sh.textContent="Loading the class food list… one moment.";
+  try{
+    const r = await fetch(FOODS_FILE, {cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const buf = await r.arrayBuffer();
+    parseWorkbook(buf);
+  }catch(e){
+    foodsLoaded=false;
+    setDbStatus("The food list ("+FOODS_FILE+") didn't load automatically. Open this section and upload it below. (" + e.message + ")", false);
+    const sh=$("srcHint"); if(sh) sh.textContent="Couldn't load the food list automatically — open \"Food list status\" below to upload it.";
+  }
+}
+
+function handleUpload(file){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{ parseWorkbook(new Uint8Array(ev.target.result)); $("results").innerHTML=""; }
+    catch(e){ setDbStatus("Couldn't read that file: "+e.message, false); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ===================== FOOD SEARCH ===================== */
+let lastResults=[];
+function searchFood(){
+  const q=$("query").value.trim().toLowerCase();
+  const box=$("results");
+  box.className="results show";
+  if(!foodsLoaded){
+    box.innerHTML='<div class="loader">The class food list hasn\'t loaded yet. Open "Food list status" below to check or upload it.</div>';
+    return;
+  }
+  if(!q){ box.innerHTML='<div class="loader">Type a food name to search.</div>'; return; }
+
+  // Rank results so plain/generic foods (e.g. "Milk, whole") outrank compound
+  // dishes that merely contain the word (e.g. "Milkshake, chocolate" or
+  // "Cereal with milk") -- a food is "generic" if the search term is
+  // immediately followed by a comma or the end of the name, which is how
+  // USDA names its catch-all/plain entries ("Milk, NFS", "Milk, low fat (1%)").
+  const scored=[];
+  FOODS.forEach(f=>{
+    const n=f.name.toLowerCase();
+    const idx=n.indexOf(q);
+    if(idx===-1) return;
+    let score;
+    if(n===q) score=0;                                          // exact match
+    else if(idx===0 && (n.length===q.length || n[q.length]===",")) score=1;   // "Milk," / "Milk" generic
+    else if(idx===0 && n[q.length]===" ") score=2;                // "Milk and cereal" - starts with it, own word
+    else if(idx===0) score=3;                                     // "Milkshake" - starts with it, glued to more letters
+    else{
+      const before=n[idx-1];
+      const wordBoundary = before===" " || before===",";
+      score = wordBoundary ? 4 : 5;                               // "Cereal with milk" vs "Buttermilk"
+    }
+    scored.push({f, score, len:n.length});
+  });
+  scored.sort((a,b)=> a.score-b.score || a.len-b.len || a.f.name.localeCompare(b.f.name));
+  lastResults = scored.slice(0,40).map(s=>s.f);
+  renderResults(lastResults);
+}
+
+function renderResults(items){
+  const box=$("results");
+  if(!items.length){ box.innerHTML='<div class="loader">No foods on the class list match that. Try a simpler term (e.g. "milk", "rice").</div>'; return; }
+  box.innerHTML=items.map((it,i)=>`
+    <div class="result" data-i="${i}">
+      <span><span class="nm">${escapeHtml(it.name)}</span><br>
+        <span class="meta">${escapeHtml(it.category)} · 1 ${escapeHtml(portionNoun(it.portionLabel))} = ${round(it.portionGrams,0)} g</span></span>
+      <span class="src-tag src-usda">LIST</span>
+    </div>`).join("");
+  box.querySelectorAll(".result").forEach(el=>{
+    el.addEventListener("click",()=>pickFood(items[+el.dataset.i]));
+  });
+}
+function escapeHtml(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+
+/* FNDDS household portions read like "1 cup", "1 tablespoon", "1 egg" — that
+   leading "1" is baked into the label. Strip it so we can multiply by the
+   student's quantity and get a label that reads naturally (e.g. "2 cups"
+   instead of "2 1 cup"). "Quantity not specified" (FNDDS's placeholder for
+   foods with no defined household unit) is renamed to the friendlier "serving". */
+function portionNoun(label){
+  let s=String(label||"").trim();
+  if(/^quantity not specified$/i.test(s)) return "serving";
+  s=s.replace(/^1\s+/,"");
+  return s || "serving";
+}
+function pluralize(noun,qty){
+  if(qty===1) return noun;
+  if(/s$/i.test(noun)) return noun;                       // already plural / uncountable (e.g. "fl oz")
+  if(/(^|\s)(oz|g|ml|l)$/i.test(noun)) return noun;       // abbreviations don't pluralize, incl. "fl oz"
+  return noun+"s";
+}
+function pickFood(food){
+  const noun=portionNoun(food.portionLabel);
+  const portions=[
+    {label:`${noun} (${round(food.portionGrams,0)} g)`, grams:food.portionGrams, noun},
+    {label:"100 g", grams:100, noun:"100 g"},
+    {label:"ounce (28.35 g)", grams:28.3495, noun:"oz"},
+    {label:"gram (1 g)", grams:1, noun:"g"}
+  ];
+  pendingFood={name:food.name, source:"list", per100g:food.per100g, portions, category:food.category};
+  openModal();
+}
+
+/* ===================== SERVING MODAL ===================== */
+function openModal(){
+  $("modalTitle").textContent=pendingFood.name;
+  $("modalDesc").textContent="Choose how much you had.";
+  $("amtPortion").innerHTML=pendingFood.portions.map((p,i)=>`<option value="${i}">${escapeHtml(p.label)}</option>`).join("");
+  $("amtQty").value=1;
+  updateGrams();
+  $("modalBg").classList.add("show");
+}
+function closeModal(){ $("modalBg").classList.remove("show"); pendingFood=null; }
+function updateGrams(){
+  if(!pendingFood) return;
+  const p=pendingFood.portions[+$("amtPortion").value];
+  const g=num($("amtQty").value)*p.grams;
+  const kcal=pendingFood.per100g.kcal!=null ? round(pendingFood.per100g.kcal*g/100,0) : "—";
+  $("gramsOut").textContent=`≈ ${round(g,1)} g  ·  ${kcal} kcal`;
+}
+function confirmAdd(){
+  const qty=num($("amtQty").value);
+  if(qty<=0){ alert("Enter an amount greater than 0."); return; }
+  const pi=+$("amtPortion").value;
+  const portion=pendingFood.portions[pi];
+  const grams=qty*portion.grams;
+  const factor=grams/100;
+  const nutr=blankNutrients();
+  Object.keys(pendingFood.per100g).forEach(k=>{
+    const val=pendingFood.per100g[k];
+    nutr[k]= val==null ? null : round(val*factor, 3);
+  });
+  log[currentDay].push({
+    name:pendingFood.name,
+    amountLabel:`${round(qty,2)} ${pluralize(portion.noun,qty)}`,
+    grams:round(grams,1),
+    category:pendingFood.category,
+    source:pendingFood.source,
+    nutrients:nutr
+  });
+  save(); closeModal();
+  $("results").className="results"; $("query").value="";
+  renderEntries(); renderDayTabs();
+}
+
+/* ===================== FOOD LOG UI ===================== */
+function renderDayTabs(){
+  $("dayTabs").innerHTML=[0,1,2].map(d=>`
+    <div class="daytab ${d===currentDay?'sel':''}" data-d="${d}">Day ${d+1} <span class="cnt">(${log[d].length})</span></div>`).join("");
+  $("dayTabs").querySelectorAll(".daytab").forEach(el=>{
+    el.addEventListener("click",()=>{ currentDay=+el.dataset.d; renderDayTabs(); renderEntries(); });
+  });
+}
+function renderEntries(){
+  $("dayHeading").textContent=`Day ${currentDay+1} entries`;
+  const list=log[currentDay];
+  if(!list.length){ $("entryList").innerHTML='<div class="empty">Nothing logged yet for this day. Search above to add your first item.</div>'; return; }
+  $("entryList").innerHTML=list.map((e,i)=>`
+    <div class="entry">
+      <span><span class="nm">${escapeHtml(e.name)}</span><br>
+        <span class="meta">${escapeHtml(e.amountLabel)} · ${escapeHtml(e.category)}</span></span>
+      <span class="kcal">${e.nutrients.kcal!=null?round(e.nutrients.kcal,0):"—"} kcal</span>
+      <button class="rm" title="Remove" data-i="${i}">×</button>
+    </div>`).join("");
+  $("entryList").querySelectorAll(".rm").forEach(b=>{
+    b.addEventListener("click",()=>{ log[currentDay].splice(+b.dataset.i,1); save(); renderEntries(); renderDayTabs(); });
+  });
+}
+
+/* ===================== AVERAGES & REPORT ===================== */
+function nonEmptyDays(){ return log.filter(d=>d.length>0).length; }
+
+function computeAverages(){
+  const days=nonEmptyDays();
+  const totals=blankNutrients();
+  Object.keys(totals).forEach(k=>totals[k]=0);
+  const present={};
+  log.forEach(day=>day.forEach(e=>{
+    Object.keys(e.nutrients).forEach(k=>{
+      if(e.nutrients[k]!=null){ totals[k]+=e.nutrients[k]; present[k]=true; }
+    });
+  }));
+  const avg={};
+  Object.keys(totals).forEach(k=> avg[k]= present[k] ? totals[k]/days : null);
+  return {avg, days};
+}
+
+function pctClass(pct,kind){
+  if(pct==null) return "pl-none";
+  if(kind==="limit") return pct>100 ? "pl-over" : "pl-good";
+  // rda / AI
+  if(pct<70) return "pl-warn";
+  if(pct>300) return "pl-over";
+  return "pl-good";
+}
+function barColor(cls){
+  return cls==="pl-over"?"var(--over)":cls==="pl-warn"?"var(--warn)":cls==="pl-good"?"var(--good)":"#bbb";
+}
+
+function buildReportRows(avg){
+  const t=targets;
+  const R=(label,val,unit,target,kind,opts={})=>{
+    let pct=null;
+    if(val!=null && target){ pct = (val/target)*100; }
+    return {label,val,unit,target,kind,pct,sub:opts.sub||false,note:opts.note||""};
+  };
+  const sections=[];
+
+  sections.push({title:"Energy & General", rows:[
+    R("Energy", avg.kcal, "kcal", t.kcal, "rda"),
+    R("Water (total)", avg.water, "g", t.water, "rda", {note:"food + drink"}),
+    R("Alcohol", avg.alcohol, "g", null, "none"),
+    R("Caffeine", avg.caffeine, "mg", null, "none")
+  ]});
+
+  sections.push({title:"Macronutrients", rows:[
+    R("Protein", avg.protein, "g", t.protein, "rda"),
+    R("Carbohydrate", avg.carbs, "g", t.carbs, "rda"),
+    R("Fiber", avg.fiber, "g", t.fiber, "rda", {sub:true}),
+    R("Total sugars", avg.sugars, "g", null, "none", {sub:true}),
+    R("Added sugars", avg.addedSugars, "g", t.addedSugars, "limit", {sub:true, note:"limit <10% kcal"}),
+    R("Total fat", avg.fat, "g", t.fatHigh, "rda", {note:`AMDR ${t.fatLow}–${t.fatHigh} g (20–35%)`}),
+    R("Saturated fat", avg.saturated, "g", t.saturated, "limit", {sub:true, note:"limit <10% kcal"}),
+    R("Trans fat", avg.trans, "g", null, "none", {sub:true, note:"keep as low as possible"}),
+    R("Monounsaturated", avg.mono, "g", null, "none", {sub:true}),
+    R("Polyunsaturated", avg.poly, "g", null, "none", {sub:true}),
+    R("Omega-3 (ALA)", avg.omega3, "g", t.omega3, "rda", {sub:true}),
+    R("Omega-6 (LA)", avg.omega6, "g", t.omega6, "rda", {sub:true}),
+    R("Cholesterol", avg.cholesterol, "mg", null, "none", {note:"keep low"})
+  ]});
+
+  sections.push({title:"Vitamins", rows:[
+    R("Vitamin A", avg.vitA, "µg", t.vitA, "rda"),
+    R("Vitamin C", avg.vitC, "mg", t.vitC, "rda"),
+    R("Vitamin D", avg.vitD, "IU", t.vitD*40, "rda", {note:`${t.vitD} µg`}),
+    R("Vitamin E", avg.vitE, "mg", t.vitE, "rda"),
+    R("Vitamin K", avg.vitK, "µg", t.vitK, "rda"),
+    R("B1 (Thiamin)", avg.b1, "mg", t.b1, "rda"),
+    R("B2 (Riboflavin)", avg.b2, "mg", t.b2, "rda"),
+    R("B3 (Niacin)", avg.b3, "mg", t.b3, "rda"),
+    R("B5 (Pantothenic acid)", avg.b5, "mg", t.b5, "rda"),
+    R("B6 (Pyridoxine)", avg.b6, "mg", t.b6, "rda"),
+    R("B12 (Cobalamin)", avg.b12, "µg", t.b12, "rda", t.vegNote?{note:"see B12 check below"}:{}),
+    R("Folate", avg.folate, "µg", t.folate, "rda")
+  ]});
+
+  sections.push({title:"Minerals", rows:[
+    R("Calcium", avg.calcium, "mg", t.calcium, "rda"),
+    R("Copper", avg.copper, "mg", t.copper, "rda"),
+    R("Iron", avg.iron, "mg", t.iron, "rda"),
+    R("Magnesium", avg.magnesium, "mg", t.magnesium, "rda"),
+    R("Manganese", avg.manganese, "mg", t.manganese, "rda"),
+    R("Phosphorus", avg.phosphorus, "mg", t.phosphorus, "rda"),
+    R("Potassium", avg.potassium, "mg", t.potassium, "rda"),
+    R("Selenium", avg.selenium, "µg", t.selenium, "rda"),
+    R("Sodium", avg.sodium, "mg", t.sodiumLimit, "limit", {note:"AI 1500 · limit 2300"}),
+    R("Zinc", avg.zinc, "mg", t.zinc, "rda")
+  ]});
+
+  return sections;
+}
+
+function renderReport(){
+  const area=$("reportArea");
+  if(nonEmptyDays()<2){
+    area.innerHTML=`<div class="card"><div class="banner err">You need at least 2 days with logged food before generating a report (3 days is required for the assignment). Go back to the food log and add entries.</div></div>`;
+    return;
+  }
+  const {avg,days}=computeAverages();
+  const sections=buildReportRows(avg);
+
+  const fmt=(v)=> v==null?"—":round(v, v>=100?0:(v>=10?1:2));
+  let html=`<div class="card">
+    <h2>3-Day Nutrient Report</h2>
+    <p class="sub">Daily averages over ${days} logged day${days>1?"s":""}, compared to your personal targets.</p>
+    <div class="req-grid" style="margin-bottom:6px">
+      <div class="req-tile"><div class="k">Name</div><div class="v" style="font-size:15px">${escapeHtml(profile.name||"—")}</div></div>
+      <div class="req-tile"><div class="k">Age / Sex</div><div class="v" style="font-size:15px">${profile.age} · ${profile.sex}${profile.status!=="none"?", "+profile.status:""}</div></div>
+      <div class="req-tile"><div class="k">Height / Weight</div><div class="v" style="font-size:15px">${heightDisplay(profile)} · ${weightDisplay(profile)}</div></div>
+      <div class="req-tile"><div class="k">Activity</div><div class="v" style="font-size:15px">${profile.activityLabel}</div></div>
+      <div class="req-tile"><div class="k">Calorie target</div><div class="v">${targets.kcal} <span class="u">kcal</span></div></div>
+      <div class="req-tile"><div class="k">Avg consumed</div><div class="v">${fmt(avg.kcal)} <span class="u">kcal</span></div></div>
+    </div>
+  </div>`;
+
+  sections.forEach(sec=>{
+    html+=`<div class="card"><h3 style="margin-top:0">${sec.title}</h3>
+      <table class="rep"><thead><tr><th>Nutrient</th><th class="num">Avg/day</th><th>Unit</th><th class="num">Target</th><th>% of target</th></tr></thead><tbody>`;
+    sec.rows.forEach(r=>{
+      const cls=pctClass(r.pct,r.kind);
+      let pctCell;
+      if(r.kind==="none"){ pctCell=`<span class="pl-none">No target</span>`; }
+      else if(r.pct==null){ pctCell=`<span class="pl-none">—</span>`; }
+      else{
+        const w=Math.min(100,r.pct);
+        pctCell=`<div style="display:flex;align-items:center;gap:8px">
+          <div class="bar"><span style="width:${w}%;background:${barColor(cls)}"></span></div>
+          <span class="pct ${cls}">${round(r.pct,0)}%</span></div>`;
+      }
+      const tgt = r.kind==="none" ? "—" : (r.kind==="limit"?"<":"")+round(r.target, r.target>=100?0:(r.target>=10?1:2));
+      html+=`<tr class="${r.sub?'sub':''}"><td>${r.label}${r.note?` <span style="color:var(--muted);font-size:11px">(${r.note})</span>`:""}</td>
+        <td class="num">${fmt(r.val)}</td><td>${r.unit}</td><td class="num">${tgt}</td><td>${pctCell}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+
+  html+=`<div class="card"><div class="banner warn"><strong>Data note:</strong> Values come from the class food list. Some nutrients (added sugars, omega-3/omega-6, amino acids, and certain vitamins/minerals) may be blank for a given food, so those totals can read low or as a dash. Note any such gaps in your reflection. This tool is for the diet-analysis assignment and is not a clinical assessment.</div></div>`;
+  if(targets.vegNote){
+    html+=`<div class="card"><div class="banner warn"><strong>Vitamin B12 check:</strong> ${escapeHtml(targets.vegNote)}</div></div>`;
+  }
+  area.innerHTML=html;
+}
+
+/* ===================== PDF EXPORT ===================== */
+function exportPDF(){
+  if(nonEmptyDays()<2){ alert("Log at least 2 days before exporting."); return; }
+  const {avg,days}=computeAverages();
+  const sections=buildReportRows(avg);
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:"pt",format:"letter"});
+  const W=doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(31,111,92); doc.rect(0,0,W,70,"F");
+  doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(16);
+  doc.text("NUTRI 300 — 3-Day Diet Analysis Report",40,32);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10);
+  doc.text("American River College · Nutrition Department",40,50);
+  doc.text("Generated "+new Date().toLocaleDateString(),W-40,50,{align:"right"});
+
+  // profile block
+  doc.setTextColor(30); doc.setFontSize(10);
+  const fmt=(v)=> v==null?"—":round(v, v>=100?0:(v>=10?1:2));
+  const dietLabel = targets.dietType==="vegan" ? "Vegan" : (targets.dietType==="vegetarian" ? "Vegetarian" : "No");
+  const info=[
+    ["Name", profile.name||"—", "Age", String(profile.age)],
+    ["Sex", profile.sex+(profile.status!=="none"?" ("+profile.status+")":""), "Height", heightDisplay(profile)],
+    ["Weight", weightDisplay(profile), "Activity", profile.activityLabel],
+    ["Vegetarian/vegan", dietLabel, "Calorie target", targets.kcal+" kcal/day"],
+    ["Avg consumed", fmt(avg.kcal)+" kcal/day", "Days averaged", String(days)]
+  ];
+  doc.autoTable({
+    startY:84, theme:"plain", styles:{fontSize:9,cellPadding:2},
+    columnStyles:{0:{fontStyle:"bold",cellWidth:110},1:{cellWidth:150},2:{fontStyle:"bold",cellWidth:110},3:{cellWidth:150}},
+    body:info
+  });
+
+  const fmtPct=r=> r.kind==="none"?"No target":(r.pct==null?"—":Math.round(r.pct)+"%");
+  const fmtTgt=r=> r.kind==="none"?"—":(r.kind==="limit"?"<":"")+round(r.target, r.target>=100?0:(r.target>=10?1:2));
+
+  sections.forEach(sec=>{
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY+14,
+      head:[[sec.title,"Avg/day","Unit","Target","% target"]],
+      body: sec.rows.map(r=>[
+        (r.sub?"   ":"")+r.label, fmt(r.val), r.unit, fmtTgt(r), fmtPct(r)
+      ]),
+      styles:{fontSize:8.5,cellPadding:3},
+      headStyles:{fillColor:[31,111,92],textColor:255,fontSize:9},
+      columnStyles:{0:{cellWidth:200},1:{halign:"right"},3:{halign:"right"},4:{halign:"right"}},
+      didParseCell:(d)=>{
+        if(d.section==="body" && d.column.index===4){
+          const r=sec.rows[d.row.index];
+          const cls=pctClass(r.pct,r.kind);
+          if(cls==="pl-over") d.cell.styles.textColor=[192,57,43];
+          else if(cls==="pl-warn") d.cell.styles.textColor=[180,130,0];
+          else if(cls==="pl-good") d.cell.styles.textColor=[46,139,87];
+          else d.cell.styles.textColor=[140,140,140];
+          d.cell.styles.fontStyle="bold";
+        }
+      },
+      margin:{left:40,right:40}
+    });
+  });
+
+  let y=doc.lastAutoTable.finalY+16;
+  if(y>720){ doc.addPage(); y=50; }
+  doc.setFontSize(8); doc.setTextColor(110);
+  const note="Data note: Values come from the class food list; some nutrients may be blank for a given food, so those totals can read low or as a dash. This tool supports the diet-analysis assignment and is not a clinical assessment.";
+  doc.text(doc.splitTextToSize(note,W-80),40,y);
+  y += doc.splitTextToSize(note,W-80).length*10 + 6;
+
+  if(targets.vegNote){
+    if(y>720){ doc.addPage(); y=50; }
+    doc.setTextColor(180,130,0);
+    const vnote="Vitamin B12 check: "+targets.vegNote;
+    doc.text(doc.splitTextToSize(vnote,W-80),40,y);
+  }
+
+  const fn = "NUTRI300_DietReport"+(profile.name?"_"+profile.name.replace(/[^a-z0-9]/gi,""):"")+".pdf";
+  doc.save(fn);
+}
+
+/* ===================== CSV EXPORT ===================== */
+function buildCSV(){
+  const header=["Day","Food Name","Amount",...EXPORT_FIELDS.map(f=>f[0]),"Category"];
+  const rows=[header];
+  log.forEach((day,di)=>{
+    day.forEach(e=>{
+      const row=[`Day ${di+1}`, e.name, e.amountLabel];
+      EXPORT_FIELDS.forEach(f=>{
+        const v=e.nutrients[f[1]];
+        row.push(v==null?"":round(v,2));
+      });
+      row.push(e.category);
+      rows.push(row);
+    });
+  });
+  return rows;
+}
+function csvEscape(v){
+  v=String(v);
+  return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function exportCSV(){
+  if(nonEmptyDays()===0){ alert("Log some food first."); return; }
+  const rows=buildCSV();
+  const csv=rows.map(r=>r.map(csvEscape).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="NUTRI300_FoodList"+(profile&&profile.name?"_"+profile.name.replace(/[^a-z0-9]/gi,""):"")+".csv";
+  a.click(); URL.revokeObjectURL(url);
+}
+function renderCSVPreview(){
+  if(nonEmptyDays()===0){ $("csvPreview").innerHTML='<div class="empty">No entries yet.</div>'; return; }
+  const rows=buildCSV();
+  const head=rows[0].slice(0,8);
+  let html='<table class="rep"><thead><tr>'+head.map(h=>`<th>${escapeHtml(h)}</th>`).join("")+'<th>…</th></tr></thead><tbody>';
+  rows.slice(1).forEach(r=>{
+    html+='<tr>'+r.slice(0,8).map((c,i)=>`<td${i>2?' class="num"':''}>${escapeHtml(String(c))}</td>`).join("")+'<td class="num" style="color:var(--muted)">…</td></tr>';
+  });
+  html+='</tbody></table><p class="hint">Preview shows the first few columns. The downloaded .csv includes all '+(EXPORT_FIELDS.length)+' nutrient columns for every entry.</p>';
+  $("csvPreview").innerHTML=html;
+}
+
+/* ===================== NAVIGATION ===================== */
+function gotoStep(s){
+  document.querySelectorAll(".panel").forEach((p,i)=>p.classList.toggle("active",i===s));
+  document.querySelectorAll('.stepnav button').forEach((b,i)=>b.setAttribute("aria-selected",i===s));
+  if(s===2) renderReport();
+  if(s===3) renderCSVPreview();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function lockSteps(){
+  const ready=!!targets;
+  $("navLog").disabled=!ready;
+  $("navReport").disabled=!ready;
+  $("navExport").disabled=!ready;
+}
+
+/* ===================== EVENTS / INIT ===================== */
+function restoreProfileForm(){
+  if(!profile) return;
+  $("name").value=profile.name||"";
+  $("birthdate").value=profile.birthdate||"";
+  $("sex").value=profile.sex||"";
+  $("units").value=profile.units||"imperial";
+  if(profile.units==="metric"){ $("htCm").value=profile.htInputCm||""; }
+  else{ $("htFt").value=profile.htInputFt||""; $("htIn").value=profile.htInputIn||""; }
+  $("wt").value=profile.wtInput||"";
+  updateUnits();
+  $("dietType").value=profile.dietType||"none";
+  if(profile.sex==="female"){
+    $("femaleStatusWrap").style.display="block";
+    $("femaleStatus").value=profile.status||"none";
+    toggleStatusSub();
+    $("pregTri").value=profile.pregTri||"1";
+    $("lactStage").value=profile.lactStage||"1";
+  }
+  const opt=document.querySelector(`.act-opt[data-v="${profile.activity}"]`);
+  if(opt){ opt.classList.add("sel"); opt.querySelector("input").checked=true; }
+  if(profile.birthdate) $("ageOut").textContent="Age: "+profile.age;
+}
+function toggleStatusSub(){
+  const s=$("femaleStatus").value;
+  $("pregTriWrap").style.display = s==="pregnant"?"block":"none";
+  $("lactStageWrap").style.display = s==="nursing"?"block":"none";
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  renderActivity();
+
+  loadAccounts();
+  migrateLegacyIfNeeded();
+  const savedSlug=localStorage.getItem(ACTIVE_LS);
+  if(savedSlug && accounts[savedSlug]){
+    enterAccount(savedSlug, accounts[savedSlug].name||savedSlug);
+  } else {
+    showGate();
+  }
+  lockSteps();
+  loadFoods();   // read foods.xlsx from the site
+
+  $("acctGo").addEventListener("click",()=>{
+    const nm=$("acctName").value.trim();
+    const pin=$("acctPin").value.trim();
+    if(!nm){ showGate("Enter your name to continue."); return; }
+    if(!pin || pin.length<4){ showGate("Enter a PIN of at least 4 characters."); return; }
+    const slug=slugify(nm);
+    const existing=accounts[slug];
+    if(existing){
+      if(existing.pinHash===null || existing.pinHash===simpleHash(pin)){
+        if(existing.pinHash===null){ existing.pinHash=simpleHash(pin); saveAccounts(); }
+        enterAccount(slug, existing.name||nm);
+      } else {
+        showGate("That PIN doesn't match the name on file. Double-check it, or add a middle initial to your name to start a fresh account.");
+      }
+    } else {
+      accounts[slug]={name:nm, pinHash:simpleHash(pin), profile:null, targets:null, log:[[],[],[]], updatedAt:Date.now()};
+      saveAccounts();
+      enterAccount(slug, nm);
+    }
+  });
+  $("acctPin").addEventListener("keydown",e=>{ if(e.key==="Enter") $("acctGo").click(); });
+  $("switchAcct").addEventListener("click",e=>{
+    e.preventDefault();
+    localStorage.removeItem(ACTIVE_LS);
+    location.reload();
+  });
+
+  $("units").addEventListener("change",updateUnits);
+  $("sex").addEventListener("change",()=>{
+    $("femaleStatusWrap").style.display = $("sex").value==="female"?"block":"none";
+  });
+  $("femaleStatus").addEventListener("change",toggleStatusSub);
+  $("birthdate").addEventListener("change",()=>{
+    const a=ageFrom($("birthdate").value);
+    $("ageOut").textContent = a!=null ? "Age: "+a : "";
+  });
+
+  $("calcBtn").addEventListener("click",()=>{
+    const p=readProfile();
+    if(!p) return;
+    profile=p; targets=computeTargets(p);
+    save(); showRequirements(); lockSteps();
+    $("reqCard").scrollIntoView({behavior:"smooth"});
+  });
+  $("toLogBtn").addEventListener("click",()=>gotoStep(1));
+  $("resetBtn").addEventListener("click",()=>{
+    if(!confirm("Clear all profile data and food entries for this account? This cannot be undone.")) return;
+    if(activeSlug && accounts[activeSlug]){
+      accounts[activeSlug].profile=null; accounts[activeSlug].targets=null; accounts[activeSlug].log=[[],[],[]];
+      saveAccounts();
+    }
+    location.reload();
+  });
+
+  $("searchBtn").addEventListener("click",searchFood);
+  $("query").addEventListener("keydown",e=>{ if(e.key==="Enter") searchFood(); });
+  $("query").addEventListener("input",()=>{ if($("query").value.trim().length>=2) searchFood(); });
+  $("dbUpload").addEventListener("change",e=>{ if(e.target.files[0]) handleUpload(e.target.files[0]); });
+
+  $("amtQty").addEventListener("input",updateGrams);
+  $("amtPortion").addEventListener("change",updateGrams);
+  $("confirmAdd").addEventListener("click",confirmAdd);
+  $("cancelAdd").addEventListener("click",closeModal);
+  $("modalBg").addEventListener("click",e=>{ if(e.target===$("modalBg")) closeModal(); });
+
+  $("toReportBtn").addEventListener("click",()=>gotoStep(2));
+  $("pdfBtn").addEventListener("click",exportPDF);
+  $("printRepBtn").addEventListener("click",()=>{ gotoStep(2); setTimeout(()=>window.print(),200); });
+  $("csvBtn").addEventListener("click",exportCSV);
+  $("printCsvBtn").addEventListener("click",()=>window.print());
+
+  document.querySelectorAll(".stepnav button").forEach(b=>{
+    b.addEventListener("click",()=>{ if(!b.disabled) gotoStep(+b.dataset.step); });
+  });
+  document.querySelectorAll("[data-goto]").forEach(b=>{
+    b.addEventListener("click",()=>gotoStep(+b.dataset.goto));
+  });
+});
+</script>
+</body>
+</html>
