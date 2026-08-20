@@ -346,6 +346,12 @@
   <div class="modal">
     <h3>Welcome — start or resume your work</h3>
     <p class="sub">Enter your name and a short PIN. This keeps your entries separate from anyone else who uses this computer, and lets you come back to your saved progress later. This is a simple lock for a shared classroom computer, not a secure login — please don't reuse a real password.</p>
+    <div id="acctExistingWrap" style="display:none">
+      <label for="acctExisting">Used this computer before? Pick your name</label>
+      <select id="acctExisting">
+        <option value="">— New student on this computer —</option>
+      </select>
+    </div>
     <label for="acctName">Your name</label>
     <input id="acctName" type="text" placeholder="Last, First" autocomplete="off" />
     <label for="acctPin">4+ digit PIN</label>
@@ -354,7 +360,7 @@
     <div class="actions">
       <button class="btn" id="acctGo">Continue</button>
     </div>
-    <p class="hint" style="margin-top:14px">First time on this computer? Entering a new name creates your account with that PIN. Returning? Enter the exact same name + PIN to load your saved data.</p>
+    <p class="hint" style="margin-top:14px">First time on this computer? Entering a new name creates your account with that PIN. Returning? Pick your name from the list above if you see it there — typing it fresh can create a second, empty profile by mistake if it's not typed exactly the same way as before.</p>
   </div>
 </div>
 
@@ -529,9 +535,26 @@ function migrateLegacyIfNeeded(){
   };
   saveAccounts();
 }
+function populateExistingAccounts(){
+  const sel=$("acctExisting");
+  const wrap=$("acctExistingWrap");
+  const slugs=Object.keys(accounts);
+  // rebuild options, keeping the "new student" placeholder first
+  sel.innerHTML='<option value="">— New student on this computer —</option>';
+  slugs
+    .sort((a,b)=> (accounts[a].name||"").localeCompare(accounts[b].name||""))
+    .forEach(slug=>{
+      const opt=document.createElement("option");
+      opt.value=slug;
+      opt.textContent=accounts[slug].name || slug;
+      sel.appendChild(opt);
+    });
+  wrap.style.display = slugs.length ? "block" : "none";
+}
 function showGate(msg){
   $("acctMsg").textContent=msg||"";
   $("acctMsg").style.color = msg ? "var(--over)" : "var(--muted)";
+  populateExistingAccounts();
   $("acctGate").classList.add("show");
   $("acctBar").style.display="none";
 }
@@ -1308,6 +1331,18 @@ document.addEventListener("DOMContentLoaded",()=>{
   }
   lockSteps();
   loadFoods();   // read foods.xlsx from the site
+
+  $("acctExisting").addEventListener("change",()=>{
+    const slug=$("acctExisting").value;
+    if(slug && accounts[slug]){
+      $("acctName").value=accounts[slug].name||"";
+      $("acctPin").value="";
+      $("acctPin").focus();
+    } else {
+      $("acctName").value="";
+      $("acctName").focus();
+    }
+  });
 
   $("acctGo").addEventListener("click",()=>{
     const nm=$("acctName").value.trim();
