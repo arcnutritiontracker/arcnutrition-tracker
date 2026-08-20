@@ -1226,7 +1226,7 @@ function exportPDF(){
     doc.text(doc.splitTextToSize(vnote,W-80),40,y);
   }
 
-  const fn = "NUTRI300_DietReport"+(profile.name?"_"+profile.name.replace(/[^a-z0-9]/gi,""):"")+".pdf";
+  const fn = "NUTRI300_NutrientReport"+(profile.name?"_"+profile.name.replace(/[^a-z0-9]/gi,""):"")+".pdf";
   doc.save(fn);
 }
 
