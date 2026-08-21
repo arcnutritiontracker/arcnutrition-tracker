@@ -1125,7 +1125,7 @@ function renderReport(){
 
   sections.forEach(sec=>{
     html+=`<div class="card"><h3 style="margin-top:0">${sec.title}</h3>
-      <table class="rep"><thead><tr><th>Nutrient</th><th class="num">Avg/day</th><th>Unit</th><th class="num">Target</th><th>% of target</th></tr></thead><tbody>`;
+      <table class="rep"><thead><tr><th>Nutrient</th><th class="num">Avg intake/day</th><th class="num">My DRI</th><th>% DRI</th></tr></thead><tbody>`;
     sec.rows.forEach(r=>{
       const cls=pctClass(r.pct,r.kind);
       let pctCell;
@@ -1138,8 +1138,10 @@ function renderReport(){
           <span class="pct ${cls}">${round(r.pct,0)}%</span></div>`;
       }
       const tgt = r.kind==="none" ? "—" : (r.kind==="limit"?"<":"")+round(r.target, r.target>=100?0:(r.target>=10?1:2));
+      const valUnit = r.val!=null ? ` ${r.unit}` : "";
+      const tgtUnit = r.kind!=="none" ? ` ${r.unit}` : "";
       html+=`<tr class="${r.sub?'sub':''}"><td>${r.label}${r.note?` <span style="color:var(--muted);font-size:11px">(${r.note})</span>`:""}</td>
-        <td class="num">${fmt(r.val)}</td><td>${r.unit}</td><td class="num">${tgt}</td><td>${pctCell}</td></tr>`;
+        <td class="num">${fmt(r.val)}${valUnit}</td><td class="num">${tgt}${tgtUnit}</td><td>${pctCell}</td></tr>`;
     });
     html+=`</tbody></table></div>`;
   });
@@ -1185,20 +1187,21 @@ function exportPDF(){
   });
 
   const fmtPct=r=> r.kind==="none"?"No target":(r.pct==null?"—":Math.round(r.pct)+"%");
-  const fmtTgt=r=> r.kind==="none"?"—":(r.kind==="limit"?"<":"")+round(r.target, r.target>=100?0:(r.target>=10?1:2));
+  const fmtTgt=r=> r.kind==="none"?"—":(r.kind==="limit"?"<":"")+round(r.target, r.target>=100?0:(r.target>=10?1:2))+(r.kind!=="none"?` ${r.unit}`:"");
+  const fmtVal=r=> r.val==null?"—":fmt(r.val)+` ${r.unit}`;
 
   sections.forEach(sec=>{
     doc.autoTable({
       startY: doc.lastAutoTable.finalY+14,
-      head:[[sec.title,"Avg/day","Unit","Target","% target"]],
+      head:[[sec.title,"Avg intake/day","My DRI","% DRI"]],
       body: sec.rows.map(r=>[
-        (r.sub?"   ":"")+r.label, fmt(r.val), r.unit, fmtTgt(r), fmtPct(r)
+        (r.sub?"   ":"")+r.label, fmtVal(r), fmtTgt(r), fmtPct(r)
       ]),
       styles:{fontSize:8.5,cellPadding:3},
       headStyles:{fillColor:[31,111,92],textColor:255,fontSize:9},
-      columnStyles:{0:{cellWidth:200},1:{halign:"right"},3:{halign:"right"},4:{halign:"right"}},
+      columnStyles:{0:{cellWidth:200},1:{halign:"right"},2:{halign:"right"},3:{halign:"right"}},
       didParseCell:(d)=>{
-        if(d.section==="body" && d.column.index===4){
+        if(d.section==="body" && d.column.index===3){
           const r=sec.rows[d.row.index];
           const cls=pctClass(r.pct,r.kind);
           if(cls==="pl-over") d.cell.styles.textColor=[192,57,43];
