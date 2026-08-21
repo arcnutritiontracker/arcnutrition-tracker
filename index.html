@@ -131,11 +131,15 @@
   .modal h3{margin-top:0;}
 
   /* report tables */
-  table.rep{width:100%;border-collapse:collapse;font-size:13px;}
+  table.rep{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
   table.rep th,table.rep td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);}
   table.rep th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
   table.rep td.num{text-align:right;font-variant-numeric:tabular-nums;}
   table.rep th.num{text-align:right;}
+  table.rep th:nth-child(1),table.rep td:nth-child(1){width:38%;}
+  table.rep th:nth-child(2),table.rep td:nth-child(2){width:20%;}
+  table.rep th:nth-child(3),table.rep td:nth-child(3){width:15%;}
+  table.rep th:nth-child(4),table.rep td:nth-child(4){width:27%;}
   table.rep tr.sub td:first-child{padding-left:26px;color:var(--muted);}
   .bar{height:9px;border-radius:5px;background:#eee;overflow:hidden;min-width:70px;}
   .bar > span{display:block;height:100%;border-radius:5px;}
