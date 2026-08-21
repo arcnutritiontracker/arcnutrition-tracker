@@ -1204,8 +1204,14 @@ function exportPDF(){
       ]),
       styles:{fontSize:8.5,cellPadding:3},
       headStyles:{fillColor:[31,111,92],textColor:255,fontSize:9},
-      columnStyles:{0:{cellWidth:200},1:{halign:"right"},2:{halign:"right"},3:{halign:"right"}},
+      columnStyles:{
+        0:{cellWidth:202},
+        1:{cellWidth:106,halign:"right"},
+        2:{cellWidth:80,halign:"right"},
+        3:{cellWidth:144,halign:"right"}
+      },
       didParseCell:(d)=>{
+        if(d.section==="head" && d.column.index>0) d.cell.styles.halign="right";
         if(d.section==="body" && d.column.index===3){
           const r=sec.rows[d.row.index];
           const cls=pctClass(r.pct,r.kind);
